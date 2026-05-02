@@ -74,7 +74,7 @@ export default function Login() {
       <div className="absolute inset-0 -z-10">
         <Canvas camera={{ position: [0, 0, 6], fov: 50 }} dpr={[1, 1.5]}>
           <SceneBackground />
-          <Logo3D position={[3.5, 0.2, 0]} scale={1.4} rotateSpeed={0.4} />
+          Logo3D position={[3.5, 0.2, 0]} scale={0.9} rotateSpeed={0.4} />
           <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
         </Canvas>
       </div>
