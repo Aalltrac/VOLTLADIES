@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { MAPS, slugifyMap } from "./Strategie";
@@ -28,7 +28,7 @@ export default function MapPage() {
   const navigate = useNavigate();
   const mapName = MAPS.find((m) => slugifyMap(m) === mapSlug);
   const [tab, setTab] = useState("strategy");
-  const [strategyMode, setStrategyMode] = useState("view"); // "view" | "edit"
+  const [strategyMode, setStrategyMode] = useState("view");
   const [content, setContent] = useState("");
   const [savedContent, setSavedContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -74,18 +74,20 @@ export default function MapPage() {
     <div className="max-w-7xl mx-auto" data-testid={`map-page-${mapSlug}`}>
       {/* Hero */}
       <div
-        className="relative rounded-md overflow-hidden border border-pink-800/40 mb-6 h-48 md:h-64"
+        className="relative rounded-md border border-pink-800/40 mb-6 h-48 md:h-64"
         style={{
           background: `linear-gradient(180deg, rgba(40,4,22,0.45), rgba(10,1,6,0.85)), url(/maps/${mapSlug}.png) center/cover no-repeat`,
+          overflow: "hidden",
         }}
       >
-        <Link
-          to="/app/strategie"
-          className="absolute top-3 left-3 px-3 py-1.5 bg-black/70 border border-pink-500/50 text-pink-100 hover:text-white text-xs font-display tracking-widest uppercase rounded flex items-center gap-2"
+        {/* Bouton retour — z-10 pour passer au-dessus du fond */}
+        <button
+          onClick={() => navigate("/app/strategie")}
+          className="absolute top-3 left-3 z-10 px-3 py-1.5 bg-black/70 border border-pink-500/50 text-pink-100 hover:text-white text-xs font-display tracking-widest uppercase rounded flex items-center gap-2 transition"
         >
           <ArrowLeft size={14} /> Maps
-        </Link>
-        <div className="absolute inset-0 flex items-end p-6">
+        </button>
+        <div className="absolute inset-0 flex items-end p-6 pointer-events-none">
           <div>
             <div className="label-3d">— Map tactique —</div>
             <h1 className="page-title text-4xl md:text-6xl">{mapName}</h1>
@@ -118,7 +120,7 @@ export default function MapPage() {
           <MessageCircle size={14} /> Discussion
         </button>
 
-        {/* Mode switcher (visible uniquement sur l'onglet stratégie) */}
+        {/* Toggle vue / édition */}
         {tab === "strategy" && (
           <div className="ml-auto flex items-center gap-1 border border-pink-800/40 rounded overflow-hidden">
             <button
@@ -147,7 +149,7 @@ export default function MapPage() {
         )}
       </div>
 
-      {/* Content */}
+      {/* Contenu */}
       {tab === "strategy" ? (
         strategyMode === "view" ? (
           <StrategyViewer content={savedContent} />
