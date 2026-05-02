@@ -1,20 +1,45 @@
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, setDoc, deleteField } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, updateDoc, deleteField } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { DAYS, DAY_KEYS, TIME_SLOTS, EVENT_TYPES, EVENT_BY_KEY, getWeekId } from "../lib/scheduleConstants";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
+function getWeekDates(weekOffset = 0) {
+  const now = new Date();
+  const day = now.getDay(); // 0=dim, 1=lun...
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday + weekOffset * 7);
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function formatDayLabel(date, dayName) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  return (
+    <div className="text-center pb-3">
+      <div className="font-display tracking-widest text-pink-300 text-sm uppercase">{dayName}</div>
+      <div className="text-xs text-pink-300/50 font-mono">{dd}/{mm}</div>
+    </div>
+  );
+}
+
 export default function Planning() {
   const { user } = useAuth();
   const [weekOffset, setWeekOffset] = useState(0);
-  const [events, setEvents] = useState({}); // { "mon-00:00": "mixte", ... }
-  const [picker, setPicker] = useState(null); // { day, slot }
+  const [events, setEvents] = useState({});
+  const [picker, setPicker] = useState(null);
 
-  // compute week date
   const weekDate = new Date();
   weekDate.setDate(weekDate.getDate() + weekOffset * 7);
   const weekId = getWeekId(weekDate);
+  const weekDates = getWeekDates(weekOffset);
 
   useEffect(() => {
     if (!user) return;
@@ -27,16 +52,22 @@ export default function Planning() {
 
   const setSlot = async (day, slot, eventKey) => {
     const ref = doc(db, "planning", weekId);
-    const key = `events.${day}-${slot}`;
+    const cellKey = `${day}-${slot}`;
+
     if (eventKey === null) {
-      await setDoc(ref, { events: {} }, { merge: true });
-      await setDoc(ref, { [`events`]: { [`${day}-${slot}`]: deleteField() } }, { merge: true });
+      // Efface uniquement ce créneau
+      const snap = await new Promise((resolve) => {
+        const unsub = onSnapshot(ref, (s) => { unsub(); resolve(s); });
+      });
+      if (snap.exists()) {
+        await updateDoc(ref, { [`events.${cellKey}`]: deleteField() });
+      }
     } else {
       await setDoc(
         ref,
         {
           weekId,
-          events: { [`${day}-${slot}`]: { type: eventKey, by: user.uid, at: Date.now() } },
+          events: { [cellKey]: { type: eventKey, by: user.uid, at: Date.now() } },
         },
         { merge: true }
       );
@@ -81,10 +112,8 @@ export default function Planning() {
         <div className="min-w-[900px]">
           <div className="grid" style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}>
             <div />
-            {DAYS.map((d) => (
-              <div key={d} className="text-center font-display tracking-widest text-pink-300 text-sm uppercase pb-3">
-                {d}
-              </div>
+            {DAYS.map((d, i) => (
+              <div key={d}>{formatDayLabel(weekDates[i], d)}</div>
             ))}
           </div>
           {TIME_SLOTS.map((slot) => (
