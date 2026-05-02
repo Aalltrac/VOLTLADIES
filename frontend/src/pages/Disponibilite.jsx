@@ -5,17 +5,43 @@ import { useAuth } from "../contexts/AuthContext";
 import { DAYS, DAY_KEYS, TIME_SLOTS, AVAILABILITY_STATES, AVAILABILITY_BY_KEY, getWeekId } from "../lib/scheduleConstants";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+function getWeekDates(weekOffset = 0) {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday + weekOffset * 7);
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function formatDayLabel(date, dayName) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  return (
+    <div className="text-center pb-3">
+      <div className="font-display tracking-widest text-pink-300 text-sm uppercase">{dayName}</div>
+      <div className="text-xs text-pink-300/50 font-mono">{dd}/{mm}</div>
+    </div>
+  );
+}
+
 export default function Disponibilite() {
   const { user } = useAuth();
   const [weekOffset, setWeekOffset] = useState(0);
-  const [allUsers, setAllUsers] = useState([]); // [{uid, pseudo, photoURL}]
-  const [availabilities, setAvailabilities] = useState({}); // { uid: { "mon-00:00": "available" } }
+  const [allUsers, setAllUsers] = useState([]);
+  const [availabilities, setAvailabilities] = useState({});
   const [selectedUid, setSelectedUid] = useState(null);
   const [activeState, setActiveState] = useState("available");
 
   const weekDate = new Date();
   weekDate.setDate(weekDate.getDate() + weekOffset * 7);
   const weekId = getWeekId(weekDate);
+  const weekDates = getWeekDates(weekOffset);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "users"), (snap) => {
@@ -114,10 +140,8 @@ export default function Disponibilite() {
         <div className="min-w-[900px]">
           <div className="grid" style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}>
             <div />
-            {DAYS.map((d) => (
-              <div key={d} className="text-center font-display tracking-widest text-pink-300 text-sm uppercase pb-3">
-                {d}
-              </div>
+            {DAYS.map((d, i) => (
+              <div key={d}>{formatDayLabel(weekDates[i], d)}</div>
             ))}
           </div>
           {TIME_SLOTS.map((slot) => (
