@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "../firebase";
+import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { Camera, User, Sparkles } from "lucide-react";
 
@@ -18,6 +17,11 @@ export default function ProfileSetup() {
   const handleFile = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (f.size > 700_000) {
+      setError("Image trop lourde, max 700 KB");
+      return;
+    }
+    setError("");
     setPhotoFile(f);
     setPhotoPreview(URL.createObjectURL(f));
   };
@@ -30,10 +34,12 @@ export default function ProfileSetup() {
     try {
       let photoURL = profile?.photoURL || "";
       if (photoFile) {
-        const path = `profiles/${user.uid}/${Date.now()}_${photoFile.name}`;
-        const r = storageRef(storage, path);
-        await uploadBytes(r, photoFile);
-        photoURL = await getDownloadURL(r);
+        photoURL = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(photoFile);
+        });
       }
       await updateDoc(doc(db, "users", user.uid), {
         pseudo: pseudo.trim(),
@@ -83,7 +89,7 @@ export default function ProfileSetup() {
                 className="hidden"
               />
             </label>
-            <span className="text-xs text-pink-300/60 mt-3 font-body">Clique pour changer ta photo</span>
+            <span className="text-xs text-pink-300/60 mt-3 font-body">Clique pour changer ta photo (max 700 KB)</span>
           </div>
 
           <div>
