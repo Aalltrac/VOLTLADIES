@@ -3,15 +3,32 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { MAPS, slugifyMap } from "./Strategie";
-import { ArrowLeft, FileText, MessageCircle } from "lucide-react";
+import { ArrowLeft, FileText, MessageCircle, Eye, Pencil } from "lucide-react";
 import StrategyEditor from "../components/StrategyEditor";
 import ChatRoom from "../components/ChatRoom";
+
+function StrategyViewer({ content }) {
+  if (!content) {
+    return (
+      <div className="glass rounded-md p-8 text-center text-pink-300/50 font-body">
+        Aucune stratégie enregistrée pour cette map. Passe en mode Modification pour commencer.
+      </div>
+    );
+  }
+  return (
+    <div
+      className="glass rounded-md tiptap p-6"
+      dangerouslySetInnerHTML={{ __html: content }}
+    />
+  );
+}
 
 export default function MapPage() {
   const { mapSlug } = useParams();
   const navigate = useNavigate();
   const mapName = MAPS.find((m) => slugifyMap(m) === mapSlug);
   const [tab, setTab] = useState("strategy");
+  const [strategyMode, setStrategyMode] = useState("view"); // "view" | "edit"
   const [content, setContent] = useState("");
   const [savedContent, setSavedContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -47,6 +64,7 @@ export default function MapPage() {
         updatedAt: serverTimestamp(),
       }, { merge: true });
       setSavedContent(content);
+      setStrategyMode("view");
     } finally {
       setSaving(false);
     }
@@ -54,7 +72,7 @@ export default function MapPage() {
 
   return (
     <div className="max-w-7xl mx-auto" data-testid={`map-page-${mapSlug}`}>
-      {/* Hero with map image */}
+      {/* Hero */}
       <div
         className="relative rounded-md overflow-hidden border border-pink-800/40 mb-6 h-48 md:h-64"
         style={{
@@ -76,7 +94,7 @@ export default function MapPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <button
           data-testid="tab-strategy"
           onClick={() => setTab("strategy")}
@@ -99,15 +117,48 @@ export default function MapPage() {
         >
           <MessageCircle size={14} /> Discussion
         </button>
+
+        {/* Mode switcher (visible uniquement sur l'onglet stratégie) */}
+        {tab === "strategy" && (
+          <div className="ml-auto flex items-center gap-1 border border-pink-800/40 rounded overflow-hidden">
+            <button
+              data-testid="strategy-mode-view"
+              onClick={() => setStrategyMode("view")}
+              className={`px-3 py-2 text-xs font-display tracking-widest uppercase flex items-center gap-1.5 transition ${
+                strategyMode === "view"
+                  ? "bg-pink-600/30 text-white"
+                  : "text-pink-300/60 hover:text-white hover:bg-pink-900/20"
+              }`}
+            >
+              <Eye size={13} /> Regarder
+            </button>
+            <button
+              data-testid="strategy-mode-edit"
+              onClick={() => setStrategyMode("edit")}
+              className={`px-3 py-2 text-xs font-display tracking-widest uppercase flex items-center gap-1.5 transition ${
+                strategyMode === "edit"
+                  ? "bg-pink-600/30 text-white"
+                  : "text-pink-300/60 hover:text-white hover:bg-pink-900/20"
+              }`}
+            >
+              <Pencil size={13} /> Modifier
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Content */}
       {tab === "strategy" ? (
-        <StrategyEditor
-          value={savedContent}
-          onChange={setContent}
-          onSave={handleSave}
-          saving={saving}
-        />
+        strategyMode === "view" ? (
+          <StrategyViewer content={savedContent} />
+        ) : (
+          <StrategyEditor
+            value={savedContent}
+            onChange={setContent}
+            onSave={handleSave}
+            saving={saving}
+          />
+        )
       ) : (
         <ChatRoom
           roomId={`map-${mapSlug}`}
