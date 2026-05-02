@@ -2,23 +2,17 @@ import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
-import { Coins, Calendar, Save, Pencil, X, Check } from "lucide-react";
+import { Coins, Calendar, Pencil, X, Check } from "lucide-react";
 
-function EditCard({ m, pass, onSave }) {
+function EditCard({ m, pass, onSave, onCancel }) {
   const [tokens, setTokens] = useState(String(pass?.tokens ?? ""));
   const [resetDate, setResetDate] = useState(pass?.resetDate ?? "");
   const [saving, setSaving] = useState(false);
 
-  // Sync if pass changes externally
-  useEffect(() => {
-    setTokens(String(pass?.tokens ?? ""));
-    setResetDate(pass?.resetDate ?? "");
-  }, [pass]);
-
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(m.uid, Number(tokens) || 0, resetDate);
+      await onSave(m.uid, tokens, resetDate);
     } finally {
       setSaving(false);
     }
@@ -46,13 +40,18 @@ function EditCard({ m, pass, onSave }) {
           className="input-field"
         />
       </div>
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="btn-neon w-full disabled:opacity-50 !py-2 text-sm"
-      >
-        <Check size={14} /> {saving ? "..." : "Valider"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-neon flex-1 disabled:opacity-50 !py-2 text-sm"
+        >
+          <Check size={14} /> {saving ? "..." : "Valider"}
+        </button>
+        <button onClick={onCancel} className="btn-ghost !py-2 !px-3">
+          <X size={14} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -80,7 +79,7 @@ export default function EvaPass() {
       doc(db, "evaPass", uid),
       {
         uid,
-        tokens,
+        tokens: Number(tokens) || 0,
         resetDate: resetDate || "",
         updatedAt: serverTimestamp(),
       },
@@ -92,8 +91,7 @@ export default function EvaPass() {
   const formatDate = (iso) => {
     if (!iso) return "—";
     try {
-      const d = new Date(iso);
-      return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+      return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
     } catch { return iso; }
   };
 
@@ -114,10 +112,11 @@ export default function EvaPass() {
             <div
               key={m.uid}
               data-testid={`eva-pass-card-${m.uid}`}
-              className="glass rounded-md p-5 fade-up relative overflow-hidden"
+              className="glass rounded-md p-5 fade-up relative"
               style={{ animationDelay: `${idx * 60}ms` }}
             >
-              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-pink-500/15 blur-2xl" />
+              {/* Déco glow — pointer-events-none pour ne pas bloquer les clics */}
+              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-pink-500/15 blur-2xl pointer-events-none" />
 
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
@@ -135,16 +134,18 @@ export default function EvaPass() {
                     <div className="text-xs text-pink-300/60">{m.email}</div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setEditingUid(isEditing ? null : m.uid)}
-                  className="p-1.5 rounded border border-pink-700/40 text-pink-300 hover:text-white hover:bg-pink-700/20 transition"
-                  title={isEditing ? "Annuler" : "Modifier"}
-                >
-                  {isEditing ? <X size={14} /> : <Pencil size={14} />}
-                </button>
+                {!isEditing && (
+                  <button
+                    onClick={() => setEditingUid(m.uid)}
+                    className="p-1.5 rounded border border-pink-700/40 text-pink-300 hover:text-white hover:bg-pink-700/20 transition"
+                    title="Modifier"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
               </div>
 
-              {/* View mode */}
+              {/* Vue */}
               {!isEditing && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-pink-900/20 border border-pink-700/30 p-3 rounded">
@@ -162,9 +163,14 @@ export default function EvaPass() {
                 </div>
               )}
 
-              {/* Edit mode */}
+              {/* Édition */}
               {isEditing && (
-                <EditCard m={m} pass={p} onSave={handleSave} />
+                <EditCard
+                  m={m}
+                  pass={p}
+                  onSave={handleSave}
+                  onCancel={() => setEditingUid(null)}
+                />
               )}
             </div>
           );
