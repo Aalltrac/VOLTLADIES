@@ -64,12 +64,6 @@ export default function Strategie() {
           );
         })}
       </div>
-
-      <div className="mt-8 text-xs text-pink-300/50 font-body" data-testid="map-images-info">
-        💡 Les images des maps sont attendues dans <code className="text-pink-300">/app/frontend/public/maps/</code> avec les noms : 
-        {" "}
-        <span className="text-pink-200">{MAPS.map(slugifyMap).map((s) => `${s}.png`).join(", ")}</span>
-      </div>
     </div>
   );
 }
